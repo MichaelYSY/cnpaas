@@ -2,7 +2,7 @@ package repository
 
 import (
 	"github.com/michaelysy/cnpaas/pod/domain/model"
-
+	
 	"github.com/jinzhu/gorm"
 )
 
@@ -46,6 +46,19 @@ func (u *PodRepository) DeletePodByID(podID int64) error {
 	if tx.Error != nil {
 		return tx.Error
 	}
+	if err:= u.mysqlDb.Where("id = ?", podID).Delete(&model.Pod{}).Error; err!=nil{
+		tx.Rollback()
+		return err
+	}
+	if err:==u.mysqlDb.Where("pod_id = ?", podID).Delete(&model.PodEnv{}).Error; err!=nil{
+		tx.Rollback()
+		return err
+	}
+	if err:==u.mysqlDb.Where("pod_id = ?", podID).Delete(&model.PodPort{}).Error; err!=nil{
+		tx.Rollback()
+		return err
+	}
+	return tx.Commit().Error
 }
 
 func (u *PodRepository) UpdatePod(pod *model.Pod) error {
