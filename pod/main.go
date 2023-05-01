@@ -30,7 +30,7 @@ import (
 )
 
 var (
-	hostIp               = "192.168.0.105"
+	hostIp               = "172.19.8.193"
 	serviceHost          = hostIp
 	servicePort          = "8081"
 	consulHost           = hostIp
@@ -43,20 +43,20 @@ var (
 
 func main() {
 
-	// 注册中心
+	// 1. Registration Center
 	consul := consul.NewRegistry(func(options *registry.Options) {
 		options.Addrs = []string{
 			consulHost + ":" + strconv.FormatInt(consulPort, 10),
 		}
 	})
 
-	// 配置中心
+	// 2. Configuration Center
 	consulConfig, err := common.GetConsulConfig(consulHost, consulPort, "/micro/config")
 	if err != nil {
 		common.Error(err)
 	}
 
-	// 连接并初始化MySQL数据库
+	// 3. Connect and initialize MySQL database
 	mysqlInfo := common.GetMysqlFromConsul(consulConfig, "mysql")
 	db, err := gorm.Open("mysql", mysqlInfo.User+":"+mysqlInfo.Pwd+"@("+mysqlInfo.Host+":3306)/"+mysqlInfo.Database+"?charset=utf8&parseTime=True&loc=Local")
 	if err != nil {
@@ -66,7 +66,7 @@ func main() {
 	defer db.Close()
 	db.SingularTable(true)
 
-	// 添加链路追踪
+	// 4. Tracing
 	t, io, err := common.NewTracer("go.micro.service.pod", tracerHost+":"+strconv.Itoa(tracerPort))
 	if err != nil {
 		common.Error(err)
@@ -74,11 +74,12 @@ func main() {
 	defer io.Close()
 	opentracing.SetGlobalTracer(t)
 
-	// 添加熔断器并添加监听程序
+	// 5. 熔断器
 	hystrixStreamHandler := hystrix.NewStreamHandler()
 	hystrixStreamHandler.Start()
+	// 添加监听程序
 	go func() {
-		//http://192.168.0.112:9092/turbine/turbine.stream
+		//http://172.19.8.193:9092/turbine/turbine.stream
 		//看板访问地址 http://127.0.0.1:9002/hystrix，url后面一定要带 /hystrix
 		err = http.ListenAndServe(net.JoinHostPort("0.0.0.0", strconv.Itoa(hystrixPort)), hystrixStreamHandler)
 		if err != nil {
@@ -86,16 +87,14 @@ func main() {
 		}
 	}()
 
-	// 添加日志中心
-	// 1）需要程序日志打入到日志文件中
-	// 2）在程序中添加filebeat.yml 文件
-	// 3) 启动filebeat，启动命令 ./filebeat -e -c filebeat.yml
+	// 6. 日志中心
+	// 1）需要程序日志打入到日志文件中 2）在程序中添加filebeat.yml文件 3）启动filebeat，启动命令 ./filebeat -e -c filebeat.yml
 	fmt.Println("日志统一记录在根目录 micro.log 文件中，请点击查看日志！")
 
-	// 添加监控
+	// 7. 添加监控
 	common.PrometheusBoot(prometheusPort)
 
-	// 创建K8s连接
+	// 8. 创建K8s连接
 	// 在集群外部使用
 	// -v /Users/cap/.kube/config:/root/.kube/config
 	var kubeconfig *string
@@ -123,7 +122,7 @@ func main() {
 		common.Fatal(err.Error())
 	}
 
-	// 创建服务实例
+	// 9. 创建服务实例
 	service := micro.NewService(
 		micro.Server(server.NewServer(func(options *server.Options) {
 			options.Advertise = serviceHost + ":" + servicePort
@@ -138,20 +137,20 @@ func main() {
 		micro.WrapHandler(ratelimit.NewHandlerWrapper(1000)),
 	)
 
-	// 初始化服务
+	// 10. 初始化服务
 	service.Init()
 
-	// 只能初始化一次，初始化数据表
+	// 11. 初始化数据表，只能初始化一次
 	// err = repository.NewPodRepository(db).InitTable()
 	// if err != nil {
 	// 	common.Fatal(err)
 	// }
 
-	// 注册句柄
+	// 12. 注册句柄
 	podDataService := service2.NewPodDataService(repository.NewPodRepository(db), clientset)
 	pod.RegisterPodHandler(service.Server(), &handler.PodHandler{PodDataService: podDataService})
 
-	// 启动服务
+	// 13. 启动服务
 	if err := service.Run(); err != nil {
 		common.Fatal(err)
 	}

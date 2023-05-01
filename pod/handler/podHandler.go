@@ -14,7 +14,7 @@ type PodHandler struct {
 }
 
 func (e *PodHandler) AddPod(ctx context.Context, info *pod.PodInfo, rsp *pod.Response) error {
-	common.Info("添加pod")
+	common.Info("Add pod")
 	podModel := &model.Pod{}
 	err := common.SwapTo(info, podModel)
 	if err != nil {
@@ -34,8 +34,8 @@ func (e *PodHandler) AddPod(ctx context.Context, info *pod.PodInfo, rsp *pod.Res
 			rsp.Msg = err.Error()
 			return err
 		}
-		common.Info("Pod 添加成功数据库ID号为：" + strconv.FormatInt(podID, 10))
-		rsp.Msg = "Pod 添加成功数据库ID号为：" + strconv.FormatInt(podID, 10)
+		common.Info("Pod is successfully added to the database. The ID is: " + strconv.FormatInt(podID, 10))
+		rsp.Msg = "Pod is successfully added to the database. The ID is: " + strconv.FormatInt(podID, 10)
 	}
 	return nil
 }

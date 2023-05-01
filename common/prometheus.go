@@ -14,6 +14,6 @@ func PrometheusBoot(port int) {
 		if err != nil {
 			log.Fatal("启动失败")
 		}
-		log.Info("监控启动,端口为：" + strconv.Itoa(port))
+		log.Info("监控启动，端口为：" + strconv.Itoa(port))
 	}()
 }
